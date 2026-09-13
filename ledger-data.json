@@ -1,0 +1,10 @@
+[
+  {
+    "id": "seed1",
+    "date": "2026-09-13",
+    "expense": "All day food",
+    "category": "Food",
+    "amount": 405,
+    "payment": "UPI"
+  }
+]
