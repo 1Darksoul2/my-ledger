@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ledger — Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#fbfaf7;
+    --paper-line:#d8d3c6;
+    --ink:#20241f;
+    --ink-soft:#5b6058;
+    --green:#1b4332;
+    --green-bg:#e7efe9;
+    --red:#8a2f26;
+    --red-bg:#f5e8e5;
+    --accent:#c98a2c;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#e9e6dd;
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:0 0 60px 0;
+  }
+  .receipt{
+    width:100%;
+    max-width:460px;
+    background:var(--paper);
+    min-height:100vh;
+    position:relative;
+    box-shadow:0 0 40px rgba(0,0,0,0.12);
+    padding-bottom:24px;
+  }
+  .receipt::before{
+    content:"";
+    display:block;
+    height:14px;
+    background:
+      linear-gradient(-45deg, transparent 8px, var(--paper) 8px) 0 0/16px 16px repeat-x,
+      linear-gradient(45deg, transparent 8px, var(--paper) 8px) 0 0/16px 16px repeat-x;
+    background-color:#e9e6dd;
+  }
+  header{
+    padding:28px 24px 18px;
+    text-align:left;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  header h1{
+    font-family:'Spectral', serif;
+    font-weight:700;
+    font-size:28px;
+    margin:0 0 2px;
+    letter-spacing:0.2px;
+  }
+  header p{
+    margin:0;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  .balance{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    padding:18px 24px;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .balance div{text-align:left;}
+  .balance .label{font-size:10px;color:var(--ink-soft);text-transform:lowercase;margin-bottom:4px;}
+  .balance .value{font-size:16px;font-weight:600;}
+  .balance .value.income{color:var(--green);}
+  .balance .value.expense{color:var(--red);}
+
+  section{padding:20px 24px;border-bottom:1px dashed var(--paper-line);}
+  section h2{
+    font-family:'Spectral', serif;
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 14px;
+  }
+
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:10px;color:var(--ink-soft);margin-bottom:4px;}
+  .field input, .field select{
+    width:100%;
+    padding:10px;
+    font-family:inherit;
+    font-size:14px;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    background:#fff;
+    color:var(--ink);
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .btn{
+    width:100%;
+    padding:12px;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    border:none;
+    border-radius:var(--radius);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    letter-spacing:0.3px;
+  }
+  .btn:active{opacity:0.85;}
+  .btn.secondary{
+    background:transparent;
+    border:1px solid var(--ink);
+    color:var(--ink);
+  }
+  .btn.small{padding:8px;font-size:11px;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-row .btn{flex:1;}
+
+  .entries-list{list-style:none;margin:0;padding:0;}
+  .entries-list li{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding:10px 0;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .entries-list li:last-child{border-bottom:none;}
+  .entry-main .cat{font-size:13px;font-weight:600;}
+  .entry-main .meta{font-size:10px;color:var(--ink-soft);margin-top:2px;}
+  .entry-amt{font-size:14px;font-weight:600;white-space:nowrap;}
+  .entry-amt.income{color:var(--green);}
+  .entry-amt.expense{color:var(--red);}
+  .entry-del{
+    background:none;border:none;color:var(--ink-soft);
+    font-size:11px;cursor:pointer;padding:0;margin-top:4px;
+    text-decoration:underline;
+  }
+  .entry-right{display:flex;flex-direction:column;align-items:flex-end;}
+
+  .empty{font-size:12px;color:var(--ink-soft);padding:8px 0;}
+
+  details{border:none;}
+  details summary{
+    cursor:pointer;
+    font-size:12px;
+    color:var(--ink-soft);
+    list-style:none;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{content:"›";display:inline-block;transition:transform .15s;}
+  details[open] summary::before{transform:rotate(90deg);}
+  details .panel{margin-top:14px;}
+
+  .status{font-size:11px;margin-top:10px;color:var(--ink-soft);}
+  .status.ok{color:var(--green);}
+  .status.err{color:var(--red);}
+
+  .hint{font-size:10px;color:var(--ink-soft);line-height:1.5;margin-top:8px;}
+  a{color:var(--accent);}
+
+  footer{padding:18px 24px 0;text-align:center;}
+  footer p{font-size:10px;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div class="receipt">
+  <header>
+    <h1>Ledger</h1>
+    <p id="monthLabel">—</p>
+  </header>
+
+  <div class="balance">
+    <div>
+      <div class="label">today</div>
+      <div class="value expense" id="totalToday">0</div>
+    </div>
+    <div>
+      <div class="label">this month</div>
+      <div class="value expense" id="totalMonth">0</div>
+    </div>
+    <div>
+      <div class="label">total</div>
+      <div class="value" id="totalAll">0</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Add entry</h2>
+    <div class="field">
+      <label for="expense">Expense</label>
+      <input type="text" id="expense" placeholder="e.g. All day food">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category">
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Bills</option>
+          <option>Shopping</option>
+          <option>Health</option>
+          <option>Entertainment</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <input type="number" id="amount" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="payment">Payment</label>
+        <select id="payment">
+          <option>UPI</option>
+          <option>Cash</option>
+          <option>Card</option>
+          <option>Bank Transfer</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date">
+      </div>
+    </div>
+    <button class="btn" id="addBtn">Add entry</button>
+  </section>
+
+  <section>
+    <h2>Entries</h2>
+    <ul class="entries-list" id="entriesList"></ul>
+    <div class="empty" id="emptyMsg">No entries yet. Add your first one above.</div>
+  </section>
+
+  <section>
+    <details>
+      <summary>Export data</summary>
+      <div class="panel">
+        <div class="btn-row">
+          <button class="btn secondary small" id="exportCsv">Download CSV</button>
+          <button class="btn secondary small" id="exportXlsx">Download Excel</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section style="border-bottom:none;">
+    <details id="syncDetails">
+      <summary>Sync to GitHub</summary>
+      <div class="panel">
+        <div class="field">
+          <label for="ghOwner">GitHub username</label>
+          <input type="text" id="ghOwner" placeholder="e.g. yourname">
+        </div>
+        <div class="field">
+          <label for="ghRepo">Repository name</label>
+          <input type="text" id="ghRepo" placeholder="e.g. my-ledger">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="ghBranch">Branch</label>
+            <input type="text" id="ghBranch" value="main">
+          </div>
+          <div class="field">
+            <label for="ghPath">File path</label>
+            <input type="text" id="ghPath" value="spending-data.json">
+          </div>
+        </div>
+        <div class="field">
+          <label for="ghToken">Personal access token</label>
+          <input type="password" id="ghToken" placeholder="ghp_...">
+        </div>
+        <div class="btn-row">
+          <button class="btn secondary small" id="saveSettings">Save settings</button>
+          <button class="btn small" id="syncNow">Sync now</button>
+        </div>
+        <div class="status" id="syncStatus"></div>
+        <div class="hint">
+          The token is stored only in this browser (localStorage) and is sent only to
+          api.github.com to read/write the file above. Create a fine-grained token scoped
+          to just this repo, with read/write access to "Contents", at
+          <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    <p>Data is saved on this device automatically. Sync to GitHub to back it up.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const LS_ENTRIES = 'ledger.entries.v1';
+  const LS_SETTINGS = 'ledger.ghsettings.v1';
+
+  const DEFAULT_ENTRIES = [
+    { id:'seed1', date:'2026-09-13', expense:'All day food', category:'Food', amount:405, payment:'UPI' }
+  ];
+  let entries = JSON.parse(localStorage.getItem(LS_ENTRIES) || 'null');
+  if(entries === null){
+    entries = DEFAULT_ENTRIES;
+    localStorage.setItem(LS_ENTRIES, JSON.stringify(entries));
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const dateInput = $('date');
+  dateInput.value = new Date().toISOString().slice(0,10);
+
+  const monthLabel = $('monthLabel');
+  monthLabel.textContent = new Date().toLocaleDateString(undefined, {month:'long', year:'numeric'});
+
+  function fmt(n){
+    return Number(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function save(){
+    localStorage.setItem(LS_ENTRIES, JSON.stringify(entries));
+  }
+
+  function render(){
+    const list = $('entriesList');
+    const empty = $('emptyMsg');
+    list.innerHTML = '';
+
+    const sorted = [...entries].sort((a,b) => (a.date < b.date ? 1 : -1));
+
+    if(sorted.length === 0){
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      sorted.forEach(e => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div class="entry-main">
+            <div class="cat">${escapeHtml(e.expense || e.category)}</div>
+            <div class="meta">${e.date} · ${escapeHtml(e.category)}${e.payment ? ' · ' + escapeHtml(e.payment) : ''}</div>
+          </div>
+          <div class="entry-right">
+            <div class="entry-amt expense">${fmt(e.amount)}</div>
+            <button class="entry-del" data-id="${e.id}">remove</button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    document.querySelectorAll('.entry-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        entries = entries.filter(e => e.id !== btn.dataset.id);
+        save();
+        render();
+      });
+    });
+
+    const todayStr = new Date().toISOString().slice(0,10);
+    const monthStr = todayStr.slice(0,7);
+    const today = entries.filter(e => e.date === todayStr).reduce((s,e) => s + Number(e.amount), 0);
+    const month = entries.filter(e => e.date && e.date.slice(0,7) === monthStr).reduce((s,e) => s + Number(e.amount), 0);
+    const all = entries.reduce((s,e) => s + Number(e.amount), 0);
+    $('totalToday').textContent = fmt(today);
+    $('totalMonth').textContent = fmt(month);
+    $('totalAll').textContent = fmt(all);
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  $('addBtn').addEventListener('click', () => {
+    const amount = parseFloat($('amount').value);
+    if(!amount || amount <= 0){
+      $('amount').focus();
+      return;
+    }
+    entries.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+      date: $('date').value || new Date().toISOString().slice(0,10),
+      expense: $('expense').value.trim(),
+      category: $('category').value,
+      amount: amount,
+      payment: $('payment').value
+    });
+    save();
+    render();
+    $('amount').value = '';
+    $('expense').value = '';
+    $('expense').focus();
+  });
+
+  // ---- export (matches Date, Expense, Category, Amount, Payment) ----
+  function toRows(){
+    return [['Date','Expense','Category','Amount','Payment'],
+      ...entries.sort((a,b)=> a.date < b.date ? -1:1)
+        .map(e => [e.date, e.expense || '', e.category, e.amount, e.payment || ''])];
+  }
+
+  $('exportCsv').addEventListener('click', () => {
+    const rows = toRows();
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ledger.csv';
+    a.click();
+  });
+
+  $('exportXlsx').addEventListener('click', () => {
+    const rows = toRows();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ledger');
+    XLSX.writeFile(wb, 'ledger.xlsx');
+  });
+
+  // ---- GitHub sync ----
+  function loadGhSettings(){
+    const s = JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}');
+    $('ghOwner').value = s.owner || '';
+    $('ghRepo').value = s.repo || '';
+    $('ghBranch').value = s.branch || 'main';
+    $('ghPath').value = s.path || 'ledger-data.json';
+    $('ghToken').value = s.token || '';
+    return s;
+  }
+  function saveGhSettings(){
+    const s = {
+      owner: $('ghOwner').value.trim(),
+      repo: $('ghRepo').value.trim(),
+      branch: $('ghBranch').value.trim() || 'main',
+      path: $('ghPath').value.trim() || 'ledger-data.json',
+      token: $('ghToken').value.trim()
+    };
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(s));
+    return s;
+  }
+
+  function setStatus(msg, kind){
+    const el = $('syncStatus');
+    el.textContent = msg;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  $('saveSettings').addEventListener('click', () => {
+    saveGhSettings();
+    setStatus('Settings saved on this device.', 'ok');
+  });
+
+  function b64EncodeUnicode(str){
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+      (_, p1) => String.fromCharCode('0x' + p1)));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(atob(str).split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  }
+
+  async function ghRequest(url, opts){
+    const s = JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}');
+    const headers = Object.assign({
+      'Accept': 'application/vnd.github+json',
+      'Authorization': 'token ' + s.token
+    }, (opts && opts.headers) || {});
+    return fetch(url, Object.assign({}, opts, {headers}));
+  }
+
+  $('syncNow').addEventListener('click', async () => {
+    const s = saveGhSettings();
+    if(!s.owner || !s.repo || !s.token){
+      setStatus('Fill in username, repo, and token first.', 'err');
+      return;
+    }
+    setStatus('Syncing...');
+    const apiUrl = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${encodeURIComponent(s.path)}?ref=${encodeURIComponent(s.branch)}`;
+    try{
+      let sha = undefined;
+      const getRes = await ghRequest(apiUrl);
+      if(getRes.status === 200){
+        const data = await getRes.json();
+        sha = data.sha;
+        try{
+          const remote = JSON.parse(b64DecodeUnicode(data.content.replace(/\n/g,'')));
+          const isDefaultOnly = entries.length === 1 && entries[0].id === 'seed1';
+          if(Array.isArray(remote) && remote.length && (entries.length === 0 || isDefaultOnly)){
+            entries = remote;
+            save();
+            render();
+          }
+        } catch(e){ /* ignore parse issues, we'll overwrite */ }
+      } else if(getRes.status !== 404){
+        const errData = await getRes.json().catch(() => ({}));
+        throw new Error(errData.message || ('GitHub returned ' + getRes.status));
+      }
+
+      const content = b64EncodeUnicode(JSON.stringify(entries, null, 2));
+      const putRes = await ghRequest(`https://api.github.com/repos/${s.owner}/${s.repo}/contents/${encodeURIComponent(s.path)}`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          message: 'Update ledger data',
+          content: content,
+          branch: s.branch,
+          sha: sha
+        })
+      });
+      if(!putRes.ok){
+        const errData = await putRes.json().catch(() => ({}));
+        throw new Error(errData.message || ('GitHub returned ' + putRes.status));
+      }
+      setStatus('Synced to GitHub just now.', 'ok');
+    } catch(err){
+      setStatus('Sync failed: ' + err.message, 'err');
+    }
+  });
+
+  loadGhSettings();
+  render();
+})();
+</script>
+</body>
+</html>
