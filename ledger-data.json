@@ -6,5 +6,21 @@
     "category": "Food",
     "amount": 405,
     "payment": "UPI"
+  },
+  {
+    "id": "mu145qnesr0th",
+    "date": "2026-09-14",
+    "expense": "Aloo paratha+ Chai",
+    "category": "Food",
+    "amount": 55,
+    "payment": "UPI"
+  },
+  {
+    "id": "mu1cbrdfpfvie",
+    "date": "2026-09-14",
+    "expense": "Chai",
+    "category": "Food",
+    "amount": 15,
+    "payment": "Card"
   }
 ]
