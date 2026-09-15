@@ -22,5 +22,37 @@
     "category": "Food",
     "amount": 15,
     "payment": "Card"
+  },
+  {
+    "id": "mu2bfmpb6s8sq",
+    "date": "2026-09-14",
+    "expense": "Chai",
+    "category": "Food",
+    "amount": 20,
+    "payment": "UPI"
+  },
+  {
+    "id": "mu2bph8m27i6z",
+    "date": "2026-09-15",
+    "expense": "Chole samose + chai",
+    "category": "Food",
+    "amount": 40,
+    "payment": "Card"
+  },
+  {
+    "id": "mu2etgeol4gdn",
+    "date": "2026-09-15",
+    "expense": "Babedo",
+    "category": "Food",
+    "amount": 90,
+    "payment": "UPI"
+  },
+  {
+    "id": "mu2hm7lv6qbcc",
+    "date": "2026-09-15",
+    "expense": "Chai",
+    "category": "Food",
+    "amount": 15,
+    "payment": "Card"
   }
 ]
